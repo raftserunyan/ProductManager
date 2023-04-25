@@ -1,0 +1,224 @@
+﻿@page "/"
+@using ProductManager.UI.Components
+@using ProductManager.UI.Components.Product
+@using ProductManager.UI.Helpers;
+@using ProductManager.UI.Models;
+@using ProductManager.UI.RequestModels.Product;
+@using ProductManager.UI.Services.Product;
+@using Radzen;
+
+@inject IProductService _productService
+@inject NavigationManager _navManager;
+
+<PageTitle>ProductManager - Home</PageTitle>
+
+<div class="w-100 flex-column justify-content-center align-items-center">
+    <div class="w-75 mb-2 flex-row justify-content-between">
+        <div class="position-relative">
+            <div class="loader-overlay" style="display: @(isDataLoading ? "flex" : "none"); z-index: 4;"></div>
+
+            <button class="btn-warning btn-lg" @onclick="AddProductClicked">
+                +
+            </button>
+        </div>
+
+        <div class="position-relative">
+            <div class="loader-overlay" style="display: @(isDataLoading ? "flex" : "none"); z-index: 4;"></div>
+
+            <button class="btn-warning btn-lg" @onclick="RegenerateClicked">
+                (Re)Generate Items
+            </button>
+        </div>
+    </div>
+
+    <div class="w-75 position-relative">
+        <div class="loader-overlay" style="display: @(isDataLoading ? "flex" : "none"); z-index: 4; min-height: 5em;">
+            <div id="loader"></div>
+        </div>
+
+        <table class="w-100 table table-bordered table-striped">
+            <thead>
+                <tr class="bg-secondary">
+                    <th scope="col">Name</th>
+                    <th scope="col">Price</th>
+                    <th scope="col">Barcode</th>
+                    <th scope="col">PLU</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in products)
+                {
+                    <tr>
+                        <td>@product.Name</td>
+                        <td>@product.Price</td>
+                        <td>@product.Barcode</td>
+                        <td>@product.PLU</td>
+                        <td class="flex-row justify-content-center align-items-center">
+                            <button class="btn btn-danger rounded-3 p-1 mr-1" @onclick="() => DeleteItem(product.Id)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z" />
+                                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z" />
+                                </svg>
+                            </button>
+
+                            <button class="btn btn-primary rounded-3 p-1 mr-1" @onclick="() => EditProductClicked(product.Id)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                    <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                                    <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+
+                @*Last row for paging controls*@
+                <tr>
+                    <td colspan="5">
+                        <div class="w-100 flex-row justify-content-center align-items-center">
+                            <button class="rounded-border mr-1" disabled="@IsPreviousButtonDisabled()" @onclick="GoToPreviousPage">Previous</button>
+
+                            @if (pageIndex >= 1)
+                            {
+                                <button class="@GetPageButtonClass(1) rounded-border btn-margin" @onclick="() => GoToPage(1)">1</button>
+                                @if (pageIndex > 3)
+                                {
+                                    <span>...</span>
+                                }
+                            }
+                            @for (int i = Math.Max(2, pageIndex - 2); i <= Math.Min(TotalPages() - 1, pageIndex + 2); i++)
+                            {
+                                var capturedPageIndex = i;
+                                <button class="@GetPageButtonClass(i) rounded-border btn-margin" @onclick="() => GoToPage(capturedPageIndex)">@i</button>
+                            }
+                            @if (pageIndex < TotalPages())
+                            {
+                                if (pageIndex < TotalPages() - 2)
+                                {
+                                    <span>...</span>
+                                }
+                                <button class="@GetPageButtonClass(TotalPages()) rounded-border btn-margin" @onclick="() => GoToPage(TotalPages())">@TotalPages()</button>
+                            }
+                            <button class="rounded-border ml-1 btn-margin" disabled="@IsNextButtonDisabled()" @onclick="GoToNextPage">Next</button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    ProductModel productToEdit = new ProductModel();
+    AddProductRequest addProductRequest = new AddProductRequest();
+
+    bool isEditPopUpOpen = false;
+    bool isAddPopUpOpen = false;
+    bool isDataLoading = false;
+
+    List<ProductModel> products = new List<ProductModel>();
+    int pageIndex;
+    int pageSize;
+    int totalItems;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isDataLoading = true;
+
+        pageIndex = 1;
+        pageSize = 20;
+        totalItems = 0;
+        await RetrieveProductsPaged();
+
+        isDataLoading = false;
+    }
+
+    private async Task RetrieveProductsPaged()
+    {
+        var productsPaged = await _productService.GetProductsPaged(pageIndex, pageSize);
+        products = productsPaged.Items;
+        totalItems = productsPaged.TotalItems;
+    }
+
+    private async Task RegenerateClicked()
+    {
+        isDataLoading = true;
+
+        await _productService.RegenerateProducts();
+        await RetrieveProductsPaged();
+
+        isDataLoading = false;
+    }
+
+    private void EditProductClicked(int productId)
+    {
+        _navManager.NavigateTo($"editProduct/{productId}");
+    }
+
+    private void AddProductClicked()
+    {
+        _navManager.NavigateTo("addProduct");
+    }
+
+    private async Task DeleteItem(int productId)
+    {
+        isDataLoading = true;
+
+        await _productService.Remove(productId);
+        await RetrieveProductsPaged();
+
+        isDataLoading = false;
+    }
+
+    #region PagingLogic
+    private int TotalPages()
+    {
+        return (int)Math.Ceiling((double)totalItems / (double)pageSize);
+    }
+
+    private async Task GoToPreviousPage()
+    {
+        pageIndex--;
+        await RetrieveProductsPaged();
+    }
+
+    private async Task GoToNextPage()
+    {
+        pageIndex++;
+        await RetrieveProductsPaged();
+    }
+
+    private bool IsPreviousButtonDisabled()
+    {
+        return pageIndex == 1;
+    }
+
+    private bool IsNextButtonDisabled()
+    {
+        return pageIndex == TotalPages();
+    }
+
+    private async Task GoToPage(int page)
+    {
+        pageIndex = page;
+        await RetrieveProductsPaged();
+    }
+
+    private string GetPageButtonClass(int page)
+    {
+        if (IsCurrentPage(page))
+        {
+            return "btn-primary";
+        }
+        else
+        {
+            return "";
+        }
+    }
+
+    private bool IsCurrentPage(int page)
+    {
+        return pageIndex == page;
+    }
+    #endregion
+}
