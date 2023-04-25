@@ -29,9 +29,14 @@ namespace ProductManager.UI.Services.Product
             return product;
         }
 
-        public async Task<PagedList<ProductModel>> GetProductsPaged(int pageIndex = 1, int pageSize = 20)
+        public async Task<PagedList<ProductModel>> GetProductsPaged(int pageIndex = 1, int pageSize = 20, string searchText = null)
         {
             var queryPath = $"products?pageSize={pageSize}&pageIndex={pageIndex}";
+
+            if (!String.IsNullOrWhiteSpace(searchText))
+            {
+                queryPath += $"&searchText={searchText}";
+            }
 
             var productsPaged = await _httpService.MakeRequest<string, PagedList<ProductModel>>(HttpMethod.Get, queryPath, null);
 

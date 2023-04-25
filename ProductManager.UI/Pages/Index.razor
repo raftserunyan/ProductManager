@@ -9,6 +9,7 @@
 
 @inject IProductService _productService
 @inject NavigationManager _navManager;
+@inject NotificationService _notService;
 
 <PageTitle>ProductManager - Home</PageTitle>
 
@@ -22,12 +23,18 @@
             </button>
         </div>
 
-        <div class="position-relative">
-            <div class="loader-overlay" style="display: @(isDataLoading ? "flex" : "none"); z-index: 4;"></div>
+        <div class="flex-row justify-content-between">
+            <div class="mr-1">
+                <SearchBox onElapsed="SearchInDb"/>
+            </div>
 
-            <button class="btn-warning btn-lg" @onclick="RegenerateClicked">
-                (Re)Generate Items
-            </button>
+            <div class="position-relative">
+                <div class="loader-overlay" style="display: @(isDataLoading ? "flex" : "none"); z-index: 4;"></div>
+
+                <button class="btn-warning btn-lg" @onclick="RegenerateClicked">
+                    (Re)Generate Items
+                </button>
+            </div>
         </div>
     </div>
 
@@ -109,17 +116,25 @@
 </div>
 
 @code {
-    ProductModel productToEdit = new ProductModel();
-    AddProductRequest addProductRequest = new AddProductRequest();
+        ProductModel productToEdit = new ProductModel();
+        AddProductRequest addProductRequest = new AddProductRequest();
 
-    bool isEditPopUpOpen = false;
-    bool isAddPopUpOpen = false;
-    bool isDataLoading = false;
+        bool isEditPopUpOpen = false;
+        bool isAddPopUpOpen = false;
+        bool isDataLoading = false;
 
-    List<ProductModel> products = new List<ProductModel>();
-    int pageIndex;
-    int pageSize;
-    int totalItems;
+        List<ProductModel> products = new List<ProductModel>();
+        int pageIndex;
+        int pageSize;
+        int totalItems;
+        string searchText;
+
+        private async Task SearchInDb(string text)
+        {
+            searchText = text;
+
+            await RetrieveProductsPaged();
+        }
 
     protected override async Task OnInitializedAsync()
     {
@@ -128,6 +143,7 @@
         pageIndex = 1;
         pageSize = 20;
         totalItems = 0;
+        searchText = null;
         await RetrieveProductsPaged();
 
         isDataLoading = false;
@@ -135,9 +151,24 @@
 
     private async Task RetrieveProductsPaged()
     {
-        var productsPaged = await _productService.GetProductsPaged(pageIndex, pageSize);
-        products = productsPaged.Items;
-        totalItems = productsPaged.TotalItems;
+        try
+        {
+            var productsPaged = await _productService.GetProductsPaged(pageIndex, pageSize, searchText);
+            products = productsPaged.Items;
+            totalItems = productsPaged.TotalItems;
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch(Exception ex)
+        {
+            _notService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = ex.Message,
+                    Duration = 5000
+                });
+        }
     }
 
     private async Task RegenerateClicked()

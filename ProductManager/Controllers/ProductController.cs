@@ -4,6 +4,8 @@ using ProductManager.API.RequestModels;
 using ProductManager.API.ViewModels.Product;
 using ProductManager.Core.Models;
 using ProductManager.Core.Services.Products;
+using ProductManager.Data.Entities;
+using ProductManager.Data.Specifications.Common;
 using ProductManager.Data.Specifications.Products;
 using ProductManager.Shared.Helpers;
 
@@ -32,9 +34,20 @@ namespace ProductManager.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllPaged([FromQuery] int pageSize = 20, [FromQuery] int pageIndex = 1)
+        public async Task<IActionResult> GetAllPaged([FromQuery] int pageSize = 20, [FromQuery] int pageIndex = 1, [FromQuery] string searchText = null)
         {
-            var productModels = await _productService.GetAllPaged(new ProductsPagedSpecification(pageSize * (pageIndex - 1), pageSize));
+            ICommonSpecification<ProductEntity> specification;
+
+            if (String.IsNullOrWhiteSpace(searchText))
+            {
+                specification = new ProductsPagedSpecification(pageSize * (pageIndex - 1), pageSize);
+            }
+            else
+            {
+                specification = new ProductsFilteredAndPagedSpecification(pageSize * (pageIndex - 1), pageSize, searchText);
+            }
+
+            var productModels = await _productService.GetAllPaged(specification);
             return Ok(_mapper.Map<PagedList<ProductViewModel>>(productModels));
         }
 

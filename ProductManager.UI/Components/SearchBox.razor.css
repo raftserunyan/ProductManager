@@ -1,0 +1,24 @@
+﻿.searchbox-body {
+    padding: .2em;
+    border: 1px solid #000;
+    display: flex;
+    flex-direction: row;
+    border-radius: 5%;
+}
+
+.search-icon {
+    padding: .3em;
+}
+
+.search-input {
+    border: none;
+    outline: none;
+}
+
+    .search-input:focus{
+        -webkit-appearance: none;
+    }
+
+    .search-input:active {
+        -webkit-appearance: none;
+    }
